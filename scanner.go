@@ -113,6 +113,22 @@ func (s *Scanner) scanToken() {
 			for s.peek() != '\n' && !s.isAtEnd() {
 				s.advance()
 			}
+		} else if s.peek() == '*' {
+			s.advance()
+			for {
+				if s.peek() == '*' {
+					s.advance()
+					if s.peek() == '/' {
+						s.advance()
+						break
+					}
+					continue
+				}
+				if s.isAtEnd() {
+					break
+				}
+				s.advance()
+			}
 		} else {
 			s.addSingleCharacterToken(SLASH)
 		}
