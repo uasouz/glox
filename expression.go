@@ -1,21 +1,31 @@
 package main
 
 type Expression interface {
-	getType() string
+	getType() ExpressionType
 }
+
+type ExpressionType int
+
+const (
+	BINARY = iota
+
+	GROUPING
+
+	LITERAL
+
+	UNARY
+)
 
 type BinaryExpression struct {
-  
-    Left Expression
-  
-    Right Expression
-  
-    Lexeme string
-  
+	Left Expression
+
+	Right Expression
+
+	Operator Token
 }
 
-func (exp *BinaryExpression) getType() string {
-	return "BINARY"
+func (exp *BinaryExpression) getType() ExpressionType {
+	return BINARY
 }
 
 func (exp *BinaryExpression) Accept(visitor Visitor[any]) any {
@@ -27,13 +37,11 @@ func BinaryExpressionAccept[T any](expression *BinaryExpression, visitor Visitor
 }
 
 type GroupingExpression struct {
-  
-    Expression Expression
-  
+	Expression Expression
 }
 
-func (exp *GroupingExpression) getType() string {
-	return "GROUPING"
+func (exp *GroupingExpression) getType() ExpressionType {
+	return GROUPING
 }
 
 func (exp *GroupingExpression) Accept(visitor Visitor[any]) any {
@@ -45,13 +53,11 @@ func GroupingExpressionAccept[T any](expression *GroupingExpression, visitor Vis
 }
 
 type LiteralExpression struct {
-  
-    Value any
-  
+	Value any
 }
 
-func (exp *LiteralExpression) getType() string {
-	return "LITERAL"
+func (exp *LiteralExpression) getType() ExpressionType {
+	return LITERAL
 }
 
 func (exp *LiteralExpression) Accept(visitor Visitor[any]) any {
@@ -63,15 +69,13 @@ func LiteralExpressionAccept[T any](expression *LiteralExpression, visitor Visit
 }
 
 type UnaryExpression struct {
-  
-    Operator Token
-  
-    Right Expression
-  
+	Operator Token
+
+	Right Expression
 }
 
-func (exp *UnaryExpression) getType() string {
-	return "UNARY"
+func (exp *UnaryExpression) getType() ExpressionType {
+	return UNARY
 }
 
 func (exp *UnaryExpression) Accept(visitor Visitor[any]) any {
@@ -80,4 +84,23 @@ func (exp *UnaryExpression) Accept(visitor Visitor[any]) any {
 
 func UnaryExpressionAccept[T any](expression *UnaryExpression, visitor Visitor[T]) T {
 	return visitor.VisitUnaryExpression(expression)
+}
+
+func expressionAccept[T any](e Expression, visitor Visitor[T]) T {
+	switch e.getType() {
+
+	case BINARY:
+		return BinaryExpressionAccept(e.(*BinaryExpression), visitor)
+
+	case GROUPING:
+		return GroupingExpressionAccept(e.(*GroupingExpression), visitor)
+
+	case LITERAL:
+		return LiteralExpressionAccept(e.(*LiteralExpression), visitor)
+
+	case UNARY:
+		return UnaryExpressionAccept(e.(*UnaryExpression), visitor)
+
+	}
+	return *new(T)
 }

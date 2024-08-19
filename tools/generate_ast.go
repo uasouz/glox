@@ -29,20 +29,31 @@ type Visitor[T any] interface {
 func expressionInterfaceTemplate(baseName string) string {
 	return strings.ReplaceAll(`
 type ||baseName|| interface {
-	getType() string
+	getType() ||baseName||Type
 }`, "||baseName||", baseName)
 }
 
+
 func expressionTemplate(baseName string) string {
 	return strings.ReplaceAll(`
+type ||baseName||Type int
+
+const (
+		{{ range $i,$v := . }}
+		{{ $v.Name | ToUpper }} {{ if eq $i 0}} = iota {{ end }}
+		{{ end }}
+)
+
+
+{{ range . }}
 type {{ .Name }}||baseName|| struct {
   {{ range .Fields }}
     {{ .Name }} {{ .TypeName }}
   {{ end }}
 }
 
-func (exp *{{ .Name }}||baseName||) getType() string {
-	return "{{ .Name | ToUpper }}"
+func (exp *{{ .Name }}||baseName||) getType() ||baseName||Type {
+	return {{ .Name | ToUpper }}
 }
 
 func (exp *{{ .Name }}||baseName||) Accept(visitor Visitor[any]) any {
@@ -51,6 +62,18 @@ func (exp *{{ .Name }}||baseName||) Accept(visitor Visitor[any]) any {
 
 func {{ .Name }}||baseName||Accept[T any](expression *{{ .Name }}||baseName||, visitor Visitor[T]) T {
 	return visitor.Visit{{ .Name }}||baseName||(expression)
+}
+{{ end }}
+
+
+func expressionAccept[T any](e Expression, visitor Visitor[T]) T {
+	switch e.getType() {
+		{{ range $i,$v := . }}
+		case {{ $v.Name | ToUpper }}: 
+			return {{ $v.Name }}||baseName||Accept(e.(*{{ $v.Name }}||baseName||), visitor)
+		{{ end }}
+	}
+	return *new(T)
 }
 `, "||baseName||", baseName)
 }
@@ -102,11 +125,9 @@ func DefineAST(outputDir, baseName string, descriptions []Description) error {
 		return err
 	}
 
-	for _, description := range descriptions {
-		err = expressionTmpl.Execute(expressionFile, description)
-		if err != nil {
-			return err
-		}
+	err = expressionTmpl.Execute(expressionFile, descriptions)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -128,8 +149,8 @@ func main() {
 					TypeName: "Expression",
 				},
 				{
-					Name:     "Lexeme",
-					TypeName: "string",
+					Name:     "Operator",
+					TypeName: "Token",
 				},
 			},
 		},

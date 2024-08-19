@@ -9,6 +9,35 @@ import (
 var hadError = false
 
 func main() {
+	testExpression := BinaryExpression{
+		Left: &UnaryExpression{
+			Token{
+				Type:    MINUS,
+				lexeme:  "-",
+				literal: nil,
+				line:    1,
+			},
+			&LiteralExpression{
+				Value: 123,
+			},
+		},
+		Operator: Token{
+			Type: STAR,
+			lexeme: "*",
+			literal: nil,
+			line: 1,
+		},
+		Right: &GroupingExpression{
+			&LiteralExpression{
+				Value: 45.67,
+			},
+		},
+	}
+
+	printer := AstPrinter{}
+
+	fmt.Println(printer.Print(&testExpression))
+
 	args := os.Args[1:]
 
 	if len(args) > 1 {
