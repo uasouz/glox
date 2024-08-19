@@ -7,6 +7,11 @@ import (
 	"text/template"
 )
 
+type TreeDefinition struct {
+	BaseName     string
+	Descriptions []Description
+}
+
 type Description struct {
 	Name   string
 	Fields []ExpressionDescriptionField
@@ -17,72 +22,64 @@ type ExpressionDescriptionField struct {
 	TypeName string
 }
 
-func visitorTemplate(baseName string) string {
-	return strings.ReplaceAll(`
+const visitorTemplate = `
 type Visitor[T any] interface {
-  {{ range . }}
-	Visit{{ .Name }}||baseName||(*{{ .Name }}||baseName||) T
+	{{ range .Descriptions }}
+	Visit{{ .Name }}{{ $.BaseName }}(*{{ .Name }}{{ $.BaseName }}) T
   {{ end }}
-}`, "||baseName||", baseName)
+}`
+
+const expressionTemplate = `
+type {{ .BaseName }} interface {
+	getType() {{ .BaseName }}Type
 }
 
-func expressionInterfaceTemplate(baseName string) string {
-	return strings.ReplaceAll(`
-type ||baseName|| interface {
-	getType() ||baseName||Type
-}`, "||baseName||", baseName)
-}
-
-
-func expressionTemplate(baseName string) string {
-	return strings.ReplaceAll(`
-type ||baseName||Type int
+type {{ $.BaseName }}Type int
 
 const (
-		{{ range $i,$v := . }}
+		{{ range $i,$v := .Descriptions }}
 		{{ $v.Name | ToUpper }} {{ if eq $i 0}} = iota {{ end }}
 		{{ end }}
 )
 
 
-{{ range . }}
-type {{ .Name }}||baseName|| struct {
+{{ range .Descriptions }}
+type {{ .Name }}{{ $.BaseName }} struct {
   {{ range .Fields }}
     {{ .Name }} {{ .TypeName }}
   {{ end }}
 }
 
-func (exp *{{ .Name }}||baseName||) getType() ||baseName||Type {
+func (exp *{{ .Name }}{{ $.BaseName }}) getType() {{ $.BaseName }}Type {
 	return {{ .Name | ToUpper }}
 }
 
-func (exp *{{ .Name }}||baseName||) Accept(visitor Visitor[any]) any {
-	return {{ .Name }}||baseName||Accept(exp, visitor)
+func (exp *{{ .Name }}{{ $.BaseName }}) Accept(visitor Visitor[any]) any {
+	return {{ .Name }}{{ $.BaseName }}Accept(exp, visitor)
 }
 
-func {{ .Name }}||baseName||Accept[T any](expression *{{ .Name }}||baseName||, visitor Visitor[T]) T {
-	return visitor.Visit{{ .Name }}||baseName||(expression)
+func {{ .Name }}{{ $.BaseName }}Accept[T any](expression *{{ .Name }}{{ $.BaseName }}, visitor Visitor[T]) T {
+	return visitor.Visit{{ .Name }}{{ $.BaseName }}(expression)
 }
 {{ end }}
 
 
 func expressionAccept[T any](e Expression, visitor Visitor[T]) T {
 	switch e.getType() {
-		{{ range $i,$v := . }}
+		{{ range $i,$v := .Descriptions }}
 		case {{ $v.Name | ToUpper }}: 
-			return {{ $v.Name }}||baseName||Accept(e.(*{{ $v.Name }}||baseName||), visitor)
+			return {{ $v.Name }}{{ $.BaseName }}Accept(e.(*{{ $v.Name }}{{ $.BaseName }}), visitor)
 		{{ end }}
 	}
 	return *new(T)
 }
-`, "||baseName||", baseName)
-}
+`
 
 var funcMap = template.FuncMap{
 	"ToUpper": strings.ToUpper,
 }
 
-func DefineAST(outputDir, baseName string, descriptions []Description) error {
+func DefineAST(outputDir string, treeDefinition TreeDefinition) error {
 	visitorFile, err := os.Create(outputDir + "/visitor.go")
 
 	if err != nil {
@@ -95,7 +92,7 @@ func DefineAST(outputDir, baseName string, descriptions []Description) error {
 		return err
 	}
 
-	visitorTemplate, err := template.New("visitor").Parse(visitorTemplate(baseName))
+	visitorTemplate, err := template.New("visitor").Parse(visitorTemplate)
 
 	if err != nil {
 		return err
@@ -107,25 +104,25 @@ func DefineAST(outputDir, baseName string, descriptions []Description) error {
 		return err
 	}
 
-	_, err = expressionFile.Write([]byte("package main\n" + expressionInterfaceTemplate(baseName) + "\n"))
+	_, err = expressionFile.Write([]byte("package main\n"))
 
 	if err != nil {
 		return err
 	}
 
-	expressionTmpl, err := template.New("expression").Funcs(funcMap).Parse(expressionTemplate(baseName))
+	expressionTmpl, err := template.New("expression").Funcs(funcMap).Parse(expressionTemplate)
 
 	if err != nil {
 		return err
 	}
 
-	err = visitorTemplate.Execute(visitorFile, descriptions)
+	err = visitorTemplate.Execute(visitorFile, treeDefinition)
 
 	if err != nil {
 		return err
 	}
 
-	err = expressionTmpl.Execute(expressionFile, descriptions)
+	err = expressionTmpl.Execute(expressionFile, treeDefinition)
 	if err != nil {
 		return err
 	}
@@ -187,7 +184,12 @@ func main() {
 		},
 	}
 
-	err := DefineAST(currentDir+"/..", "Expression", descriptions)
+	treeDefinition := TreeDefinition{
+		BaseName:     "Expression",
+		Descriptions: descriptions,
+	}
+
+	err := DefineAST(currentDir+"/..", treeDefinition)
 
 	fmt.Println(err)
 }

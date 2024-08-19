@@ -7,21 +7,27 @@ type Expression interface {
 type ExpressionType int
 
 const (
-	BINARY = iota
-
-	GROUPING
-
-	LITERAL
-
-	UNARY
+		
+		BINARY  = iota 
+		
+		GROUPING 
+		
+		LITERAL 
+		
+		UNARY 
+		
 )
 
+
+
 type BinaryExpression struct {
-	Left Expression
-
-	Right Expression
-
-	Operator Token
+  
+    Left Expression
+  
+    Right Expression
+  
+    Operator Token
+  
 }
 
 func (exp *BinaryExpression) getType() ExpressionType {
@@ -37,7 +43,9 @@ func BinaryExpressionAccept[T any](expression *BinaryExpression, visitor Visitor
 }
 
 type GroupingExpression struct {
-	Expression Expression
+  
+    Expression Expression
+  
 }
 
 func (exp *GroupingExpression) getType() ExpressionType {
@@ -53,7 +61,9 @@ func GroupingExpressionAccept[T any](expression *GroupingExpression, visitor Vis
 }
 
 type LiteralExpression struct {
-	Value any
+  
+    Value any
+  
 }
 
 func (exp *LiteralExpression) getType() ExpressionType {
@@ -69,9 +79,11 @@ func LiteralExpressionAccept[T any](expression *LiteralExpression, visitor Visit
 }
 
 type UnaryExpression struct {
-	Operator Token
-
-	Right Expression
+  
+    Operator Token
+  
+    Right Expression
+  
 }
 
 func (exp *UnaryExpression) getType() ExpressionType {
@@ -86,21 +98,23 @@ func UnaryExpressionAccept[T any](expression *UnaryExpression, visitor Visitor[T
 	return visitor.VisitUnaryExpression(expression)
 }
 
+
+
 func expressionAccept[T any](e Expression, visitor Visitor[T]) T {
 	switch e.getType() {
-
-	case BINARY:
-		return BinaryExpressionAccept(e.(*BinaryExpression), visitor)
-
-	case GROUPING:
-		return GroupingExpressionAccept(e.(*GroupingExpression), visitor)
-
-	case LITERAL:
-		return LiteralExpressionAccept(e.(*LiteralExpression), visitor)
-
-	case UNARY:
-		return UnaryExpressionAccept(e.(*UnaryExpression), visitor)
-
+		
+		case BINARY: 
+			return BinaryExpressionAccept(e.(*BinaryExpression), visitor)
+		
+		case GROUPING: 
+			return GroupingExpressionAccept(e.(*GroupingExpression), visitor)
+		
+		case LITERAL: 
+			return LiteralExpressionAccept(e.(*LiteralExpression), visitor)
+		
+		case UNARY: 
+			return UnaryExpressionAccept(e.(*UnaryExpression), visitor)
+		
 	}
 	return *new(T)
 }
